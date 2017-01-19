@@ -38,7 +38,7 @@ def get_state_links(s):
 
     return sorted(state_links)
 
-def processStates(s, state_links, fileout):
+def process_states(s, state_links, fileout):
     """ grabs all counties per state
     \
     s: requests session obj, state_links: set obj"""
@@ -46,30 +46,34 @@ def processStates(s, state_links, fileout):
 
     for state in state_links:
         print ("Now looking at %s" % state)
-        page_source = (s.get(state)).content
-        county_links = set() #individual county links
-        soup = BeautifulSoup(page_source, "html.parser")
-        for a in soup.find_all('a', href = True): #find all links
-            link = a['href']
-            print ( "checking href: %s" % link)
-            if 'crime' in  link : #check links to other states
-                county_links.add(base_url + link)
-        for city in county_links:
-            processCity(s, city, fileout)
-            sleep(4)
-        sleep(4)
-    print (len(county_links))
-    print (county_links)
+        try:
+            page_source = (s.get(state)).content
+            county_links = set() #individual county links
+            soup = BeautifulSoup(page_source, "html.parser")
+            for a in soup.find_all('a', href = True): #find all links
+                link = a['href']
+                print ( "checking href: %s" % link)
+                if 'crime' in  link : #check links to other states
+                    county_links.add(base_url + link)
+            for city in county_links:
 
-def processCity(s, url, fileout):
+                process_city(s, city, fileout)
+                sleep(4)
+        except Exception as e:
+            print (e)
+        sleep(4)
+
+
+def process_city(s, url, fileout):
     """ Grabs all relavent data from url representing county
     \
     s: request Session obj, url: str url"""
     city_data = {}
-    response = (s.get(url)).content
+
 
     print ("working: %s " % url)
     try:
+        response = (s.get(url)).content
         soup = BeautifulSoup(response, "html.parser")
         graphs = soup.find_all('div', {"class" : "hgraph"}) # look for all horizontal bar charts
         crime_tables = []
@@ -110,11 +114,11 @@ def processCity(s, url, fileout):
         city_data["Violent"] = violent_crimes
         city_data["Property"] = propery_crimes
         if  city != None and city != "":
-            writeCity(city, state, city_data, fileout)
+            write_city(city, state, city_data, fileout)
     except Exception as e:
         print (e)
 
-def createFile(file_out = time.strftime("%Y%m%d-%H%M%S") + "-Crimedata.csv"):
+def create_file(file_out = time.strftime("%Y%m%d-%H%M%S") + "-Crimedata.csv"):
     """Create a timestamped csvfile"""
     with open(file_out,'w+', newline = '') as csvfile:
         spamwriter = csv.writer(csvfile)
@@ -127,7 +131,7 @@ def createFile(file_out = time.strftime("%Y%m%d-%H%M%S") + "-Crimedata.csv"):
     return file_out
 
 
-def writeCity(city, state, city_table, fileout):
+def write_city(city, state, city_table, fileout):
     """Writes property and crime rates to fileout
     \
     city: str, state: str, city_table: dict containing keys of crimetype. Each key maps to a list of tuples indicating year/rate, fileout: outfile"""
@@ -146,8 +150,8 @@ def writeCity(city, state, city_table, fileout):
 def main():
     s = requests.session()
     state_links = get_state_links(s)
-    fileout = createFile()
-    processStates(s, state_links, fileout)
+    fileout = create_file()
+    process_states(s, state_links, fileout)
     s.close()
 
     print ('finished')
